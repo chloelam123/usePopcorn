@@ -98,12 +98,17 @@ export default function App() {
 
   useEffect(
     function () {
+      //1.from browser API
+      const controller = new AbortController();
+
       async function fetchMovies() {
         try {
           setIsLoading(true);
           setError("");
           const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
+            //2.just the following receipt how to do
+            { signal: controller.signal }
           );
 
           //error handle 1
@@ -116,9 +121,13 @@ export default function App() {
           if (data.Response === "False") throw new Error("Movie not found!");
 
           setMovies(data.Search);
+          setError("");
         } catch (err) {
           console.error(err.message);
-          setError(err.message);
+
+          if (err.name !== "AbortError") {
+            setError(err.message);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -131,7 +140,11 @@ export default function App() {
       }
 
       fetchMovies();
-      // console.log("2");
+
+      //3.cleaning up data fetching
+      return function () {
+        controller.abort();
+      };
     },
     [query]
   );
@@ -313,6 +326,8 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     Genre: genre,
   } = movie;
 
+  console.log(title);
+
   function handleAdd() {
     const newWatchedMovie = {
       imdbID: selectedId,
@@ -326,6 +341,8 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     onAddWatched(newWatchedMovie);
     onCloseMovie();
   }
+
+  useEffect(function () {}, []);
 
   useEffect(
     function () {
@@ -343,6 +360,18 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
       getMovieDetails();
     },
     [selectedId]
+  );
+
+  useEffect(
+    function () {
+      if (!title) return;
+      document.title = `Movie | ${title}`;
+
+      return function () {
+        document.title = "UsePopcorn";
+      };
+    },
+    [title]
   );
 
   return (
