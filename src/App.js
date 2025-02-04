@@ -329,7 +329,7 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   const [isLoading, setIsLoading] = useState(true);
   const [userRating, setUserRating] = useState("");
 
-  const countRef = useRef(0);
+  const countRef = useRef(1);
 
   useEffect(
     function () {
