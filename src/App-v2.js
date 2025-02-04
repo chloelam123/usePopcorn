@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import StarRating from "./StarRating";
 
 const tempMovieData = [
@@ -56,9 +56,16 @@ const KEY = "c80b3212";
 export default function App() {
   const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // const [watched, setWatched] = useState([]);
+  // useState not only pass single value, also pass callback function
+  const [watched, setWatched] = useState(function () {
+    const storeValue = localStorage.getItem("watched");
+    return JSON.parse(storeValue);
+  });
+
   //below show more detail of the movie, so need call other API, different with [movies]
   const [selectedId, setSelectedId] = useState(null);
 
@@ -89,11 +96,21 @@ export default function App() {
 
   function handleAddWatched(movie) {
     setWatched((watched) => [...watched, movie]);
+
+    //one of methods but using useEffect is better
+    // localStorage.setItem("watched", JSON.stringify([...watched, movie]));
   }
 
   function handleDeletedWatched(id) {
     setWatched((watched) => watched.filter((movie) => movie.imdbID !== id));
   }
+
+  useEffect(
+    function () {
+      localStorage.setItem("watched", JSON.stringify(watched));
+    },
+    [watched]
+  );
 
   useEffect(
     function () {
@@ -217,28 +234,6 @@ function Logo() {
 }
 
 function Search({ query, setQuery }) {
-  //work with DOM elements, usually initial value is "null"
-  //S1
-  const inputEl = useRef(null);
-
-  //S3
-  useEffect(
-    function () {
-      function callback(e) {
-        if (document.activeElement === inputEl.current) return;
-
-        if (e.code === "Enter") {
-          inputEl.current.focus();
-          setQuery("");
-        }
-      }
-
-      document.addEventListener("keydown", callback);
-      return () => document.removeEventListener("keydown", callback);
-    },
-    [setQuery]
-  );
-
   return (
     <input
       className="search"
@@ -246,8 +241,6 @@ function Search({ query, setQuery }) {
       placeholder="Search movies..."
       value={query}
       onChange={(e) => setQuery(e.target.value)}
-      //S2
-      ref={inputEl}
     />
   );
 }
@@ -329,15 +322,6 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   const [isLoading, setIsLoading] = useState(true);
   const [userRating, setUserRating] = useState("");
 
-  const countRef = useRef(0);
-
-  useEffect(
-    function () {
-      if (userRating) countRef.current = countRef.current + 1;
-    },
-    [userRating]
-  );
-
   const isWatched = watched.map((movie) => movie.imdbID).includes(selectedId);
   const watchedUserRating = watched.find(
     (movie) => movie.imdbID === selectedId
@@ -358,7 +342,24 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     Genre: genre,
   } = movie;
 
-  // console.log(title);
+  // if (imdbRating > 8) [isTop, setIsTop] = useState(true);
+  // issue1: early return
+  // if (imdbRating > 8) return <p>Greatest ever!</p>;
+
+  // const [isTop, setIsTop] = useState(imdbRating > 8);
+  // console.log("isTop", isTop);
+  // useEffect(
+  //   function () {
+  //     setIsTop(imdbRating > 8);
+  //   },
+  //   [imdbRating]
+  // );
+
+  //should use derived state
+  // const isTop = imdbRating > 8;
+  // console.log(isTop);
+
+  const [avgRating, setAvgRating] = useState(0);
 
   function handleAdd() {
     const newWatchedMovie = {
@@ -372,6 +373,9 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
     };
     onAddWatched(newWatchedMovie);
     onCloseMovie();
+
+    // setAvgRating(Number(imdbRating));
+    // setAvgRating((avgRating) => (avgRating + userRating) / 2);
   }
 
   useEffect(
@@ -445,6 +449,7 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
               </p>
             </div>
           </header>
+          {/* <p>{avgRating}</p> */}
           <section>
             <div className="rating">
               {!isWatched ? (
