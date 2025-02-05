@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import StarRating from "./StarRating";
+import { useMovies } from "./useMovies";
 
 const tempMovieData = [
   {
@@ -47,23 +48,24 @@ const tempWatchedData = [
     userRating: 9,
   },
 ];
+const KEY = "c80b3212";
 
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
-const KEY = "c80b3212";
-
 export default function App() {
   const [query, setQuery] = useState("");
-  const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
   //below show more detail of the movie, so need call other API, different with [movies]
   const [selectedId, setSelectedId] = useState(null);
+  //using custom hooks to extract
+  const { movies, isLoading, error } = useMovies(query);
 
-  const tempQuery = "interstellar";
-
+  // const [watched, setWatched] = useState([]);
+  // useState not only pass single value, also pass callback function
+  const [watched, setWatched] = useState(function () {
+    const storeValue = localStorage.getItem("watched");
+    return JSON.parse(storeValue);
+  });
   // useEffect(function () {
   //   console.log("After initial render");
   // }, []);
@@ -97,55 +99,9 @@ export default function App() {
 
   useEffect(
     function () {
-      //1.from browser API
-      const controller = new AbortController();
-
-      async function fetchMovies() {
-        try {
-          setIsLoading(true);
-          setError("");
-          const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
-            //2.just the following receipt how to do
-            { signal: controller.signal }
-          );
-
-          //error handle 1
-          if (!res.ok)
-            throw new Error("Something went wrong with fetching movies");
-
-          const data = await res.json();
-          console.log(data);
-          //error handle 2
-          if (data.Response === "False") throw new Error("Movie not found!");
-
-          setMovies(data.Search);
-          setError("");
-        } catch (err) {
-          if (err.name !== "AbortError") {
-            console.error(err.message);
-            setError(err.message);
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      }
-
-      if (query.length < 3) {
-        setMovies([]);
-        setError("");
-        return;
-      }
-
-      handleCloseMovie();
-      fetchMovies();
-
-      //3.cleaning up data fetching
-      return function () {
-        controller.abort();
-      };
+      localStorage.setItem("watched", JSON.stringify(watched));
     },
-    [query]
+    [watched]
   );
 
   return (
@@ -329,7 +285,9 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
   const [isLoading, setIsLoading] = useState(true);
   const [userRating, setUserRating] = useState("");
 
-  const countRef = useRef(1);
+  const countRef = useRef(0);
+  //use normal variable won't work, because it will be zero after every re-render
+  const count = 0;
 
   useEffect(
     function () {
@@ -369,6 +327,7 @@ function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
       imdbRating: Number(imdbRating),
       runtime: Number(runtime.split(" ").at(0)),
       userRating,
+      countRatingDecisions: countRef.current,
     };
     onAddWatched(newWatchedMovie);
     onCloseMovie();
